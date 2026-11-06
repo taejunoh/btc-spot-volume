@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "btc-volume",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": ["-c", "node scripts/build.mjs && exec python3 -m http.server 5178 --directory dist"],
+      "port": 5178
+    }
+  ]
+}

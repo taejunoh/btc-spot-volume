@@ -1,0 +1,5 @@
+{
+  "regions": ["icn1"],
+  "buildCommand": "node scripts/build.mjs",
+  "outputDirectory": "dist"
+}

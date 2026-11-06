@@ -1,0 +1,1185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Aggregated BTC Spot Volume</title>
+<meta name="description" content="Live spot bitcoin volume from 11 exchanges, including Binance, Coinbase, OKX, Bybit and Upbit, summed in BTC.">
+<link rel="canonical" href="https://btc-spot-volume.vercel.app/">
+<link rel="alternate" hreflang="en" href="https://btc-spot-volume.vercel.app/">
+<link rel="alternate" hreflang="ko" href="https://btc-spot-volume.vercel.app/ko/">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="en_US">
+<meta property="og:site_name" content="Aggregated BTC Spot Volume">
+<meta property="og:title" content="Aggregated BTC Spot Volume">
+<meta property="og:description" content="Live spot bitcoin volume from 11 exchanges, including Binance, Coinbase, OKX, Bybit and Upbit, summed in BTC.">
+<meta property="og:url" content="https://btc-spot-volume.vercel.app/">
+<meta property="og:image" content="https://btc-spot-volume.vercel.app/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Bar chart of bitcoin spot volume stacked by exchange">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Aggregated BTC Spot Volume">
+<meta name="twitter:description" content="Live spot bitcoin volume from 11 exchanges, including Binance, Coinbase, OKX, Bybit and Upbit, summed in BTC.">
+<meta name="twitter:image" content="https://btc-spot-volume.vercel.app/og.png">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230e1116'/%3E%3Crect x='6' y='16' width='5' height='10' rx='1' fill='%233987e5'/%3E%3Crect x='6' y='11' width='5' height='4' rx='1' fill='%23d95926'/%3E%3Crect x='13.5' y='12' width='5' height='14' rx='1' fill='%233987e5'/%3E%3Crect x='13.5' y='6' width='5' height='5' rx='1' fill='%23d95926'/%3E%3Crect x='21' y='18' width='5' height='8' rx='1' fill='%233987e5'/%3E%3Crect x='21' y='14' width='5' height='3' rx='1' fill='%23d95926'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one trading-desk column — summary strip, controls, price+volume chart, breakdown table. */
+:root {
+  --bg: #f6f7f9;
+  --panel: #ffffff;
+  --line: #e2e5ea;
+  --fg: #12151a;
+  --fg-2: #4b5260;
+  --fg-3: #7d8594;
+  --accent: #2a78d6;
+  --up: #12a37a;
+  --down: #e0474c;
+  --other: #9aa1ad;
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100;
+  --s5: #e87ba4; --s6: #008300; --s7: #6250d6; --s8: #e34948;
+  --font-body: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --font-num: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1116; --panel: #151a21; --line: #252c36;
+    --fg: #e9ecf1; --fg-2: #aab2bf; --fg-3: #737c8a;
+    --accent: #3987e5; --up: #2bbd8e; --down: #ef5b5f; --other: #6b7380;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
+    --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1116; --panel: #151a21; --line: #252c36;
+  --fg: #e9ecf1; --fg-2: #aab2bf; --fg-3: #737c8a;
+  --accent: #3987e5; --up: #2bbd8e; --down: #ef5b5f; --other: #6b7380;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
+  --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--fg);
+  font: 14px/1.5 var(--font-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 40px;
+}
+.wrap { max-width: 1280px; margin: 0 auto; display: grid; gap: 16px; }
+.num { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+
+header { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; }
+h1 { font-size: 20px; font-weight: 700; margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+h1 small { display: block; font-size: 13px; font-weight: 400; color: var(--fg-3); letter-spacing: 0; }
+.status { font-size: 12px; color: var(--fg-3); display: flex; align-items: center; gap: 8px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--up); }
+.dot.busy { background: var(--s4); animation: pulse 1s infinite; }
+@keyframes pulse { 50% { opacity: .3; } }
+@media (prefers-reduced-motion: reduce) { .dot.busy { animation: none; } }
+
+.summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.tile { background: var(--panel); padding: 14px 16px; min-width: 0; }
+.tile .label { font-size: 12px; color: var(--fg-3); }
+.tile .big { font-size: 26px; font-weight: 600; line-height: 1.2; margin-top: 2px; }
+.tile .sub { font-size: 12px; color: var(--fg-2); }
+.sharebar { display: flex; height: 10px; border-radius: 3px; overflow: hidden; margin-top: 10px; gap: 2px; background: var(--panel); }
+.sharebar span { display: block; height: 100%; min-width: 2px; }
+
+.controls { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; }
+.group { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.group .glabel { font-size: 12px; color: var(--fg-3); margin-right: 2px; }
+button { font: inherit; color: inherit; cursor: pointer; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: var(--panel); }
+.seg button { border: 0; background: transparent; padding: 5px 11px; font-size: 13px; color: var(--fg-2); }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
+.preset { border: 1px solid var(--line); background: var(--panel); border-radius: 6px; padding: 5px 11px; font-size: 13px; color: var(--fg-2); }
+.preset[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); font-weight: 500; }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--panel); border-radius: 999px; padding: 4px 10px 4px 8px; font-size: 13px; color: var(--fg-3); }
+.chip .sw { width: 10px; height: 10px; border-radius: 3px; background: var(--c); opacity: .35; }
+.chip[aria-pressed="true"] { color: var(--fg); border-color: var(--fg-3); }
+.chip[aria-pressed="true"] .sw { opacity: 1; }
+.chip .st { font-size: 11px; color: var(--down); }
+.chip .cau, .caution { font-size: 11px; color: var(--fg-3); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; line-height: 16px; font-weight: 400; }
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.linkbtn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--panel); border-radius: 6px; padding: 5px 11px; font-size: 13px; color: var(--fg-2); text-decoration: none; }
+.linkbtn:hover { border-color: var(--fg-3); color: var(--fg); }
+.linkbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.linkbtn.done { border-color: var(--up); color: var(--up); }
+.chartbox.sharebox { height: 340px; min-height: 300px; }
+.sharebox .legend { min-height: 0; }
+.sharebox .ttl { font-weight: 600; color: var(--fg); font-size: 13px; }
+.sharebox .seg button { padding: 3px 9px; font-size: 12px; }
+.empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--fg-3); font-size: 13px; z-index: 2; pointer-events: none; }
+
+.chartbox { display: flex; flex-direction: column; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; height: min(680px, 80vh); min-height: 480px; overflow: hidden; }
+.chartarea { position: relative; flex: 1; min-height: 0; }
+#chart, #shareChart { position: absolute; inset: 0; }
+.legend { font-size: 12px; padding: 8px 12px; border-bottom: 1px solid var(--line); min-height: 74px; }
+.legend .t { color: var(--fg-2); }
+.legend .ohlc { color: var(--fg-2); }
+.legend .ohlc b { color: var(--fg); font-weight: 600; }
+.legend .head { display: flex; flex-wrap: wrap; gap: 2px 14px; align-items: baseline; }
+.legend .rows { display: flex; flex-wrap: wrap; gap: 2px 14px; margin-top: 4px; }
+.legend .rows .it { display: inline-flex; align-items: center; gap: 5px; color: var(--fg-2); }
+.legend .rows .it i { width: 8px; height: 8px; border-radius: 2px; background: var(--c); }
+.legend .rows .it b { color: var(--fg); font-weight: 400; }
+.legend .rows .it em { color: var(--fg-3); font-style: normal; }
+.legend .tot { font-weight: 600; color: var(--fg); }
+
+.tablewrap { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { padding: 9px 12px; text-align: left; white-space: nowrap; border-bottom: 1px solid var(--line); }
+th { font-size: 12px; font-weight: 500; color: var(--fg-3); }
+td.r, th.r { text-align: right; }
+tr:last-child td { border-bottom: 0; }
+tr.off td { color: var(--fg-3); }
+.exname { display: flex; align-items: center; gap: 8px; font-weight: 500; }
+.exname i { width: 10px; height: 10px; border-radius: 3px; background: var(--c); }
+.mk { color: var(--fg-3); font-size: 12px; }
+.bar { position: relative; width: 120px; height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; display: inline-block; vertical-align: middle; margin-right: 8px; }
+.bar span { position: absolute; inset: 0 auto 0 0; background: var(--c); }
+.err { color: var(--down); font-size: 12px; }
+.ok { color: var(--up); font-size: 12px; }
+.notes { font-size: 12px; color: var(--fg-3); line-height: 1.7; max-width: 80ch; }
+.notes p { margin: 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1><span data-i18n="title">Aggregated BTC Spot Volume</span><small data-i18n="subtitle">Spot bitcoin volume across exchanges, summed in BTC</small></h1>
+    <div class="actions">
+      <div class="status"><span class="dot" id="dot"></span><span id="updated" data-i18n="loading">Loading…</span></div>
+      <button type="button" class="linkbtn" id="copyLink" data-i18n="copyLink">Copy link</button>
+      <a class="linkbtn" id="shareX" href="https://x.com/intent/post" target="_blank" rel="noopener" data-i18n="shareX">Share on X</a>
+      <a class="linkbtn" id="langSwitch" href="/ko/" data-i18n="langSwitch">한국어</a>
+    </div>
+  </header>
+
+  <section class="summary" aria-label="Summary" data-i18n-aria="ariaSummary">
+    <div class="tile">
+      <div class="label" id="sumLabel" data-i18n="sumInit">Last 24h total (selected exchanges)</div>
+      <div class="big num" id="sumBtc">–</div>
+      <div class="sub num" id="sumUsd">–</div>
+    </div>
+    <div class="tile">
+      <div class="label" data-i18n="tileBc">Binance + Coinbase (same window)</div>
+      <div class="big num" id="bcBtc">–</div>
+      <div class="sub num" id="bcShare">–</div>
+    </div>
+    <div class="tile">
+      <div class="label" data-i18n="tilePx">Reference price (Binance BTC/USDT)</div>
+      <div class="big num" id="px">–</div>
+      <div class="sub num" id="pxChg">–</div>
+    </div>
+    <div class="tile">
+      <div class="label" data-i18n="tileShare">Share by exchange (selected)</div>
+      <div class="sharebar" id="sharebar"></div>
+      <div class="sub" id="shareTop" style="margin-top:6px">–</div>
+    </div>
+  </section>
+
+  <section class="controls" aria-label="Settings" data-i18n-aria="ariaControls">
+    <div class="group"><span class="glabel" data-i18n="glInterval">Interval</span>
+      <div class="seg" id="tfSeg">
+        <button type="button" id="tf-15m" data-tf="15m" data-i18n="tf15m">15m</button>
+        <button type="button" id="tf-1h" data-tf="1h" data-i18n="tf1h">1h</button>
+        <button type="button" id="tf-4h" data-tf="4h" data-i18n="tf4h">4h</button>
+        <button type="button" id="tf-1d" data-tf="1d" data-i18n="tf1d">1D</button>
+      </div>
+    </div>
+    <div class="group"><span class="glabel" data-i18n="glUnit">Unit</span>
+      <div class="seg" id="unitSeg">
+        <button type="button" id="unit-btc" data-unit="btc">BTC</button>
+        <button type="button" id="unit-usd" data-unit="usd">USD</button>
+      </div>
+    </div>
+    <div class="group"><span class="glabel" data-i18n="glView">View</span>
+      <div class="seg" id="modeSeg">
+        <button type="button" id="mode-stack" data-mode="stack" data-i18n="modeStack">Stacked by exchange</button>
+        <button type="button" id="mode-total" data-mode="total" data-i18n="modeTotal">Total only</button>
+      </div>
+    </div>
+    <div class="group"><span class="glabel" data-i18n="glPresets">Presets</span>
+      <button type="button" class="preset" id="pre-trusted" data-preset="trusted" title="The 9 exchanges left after excluding Gate and HTX, which face volume-inflation allegations" data-i18n-title="preTrustedTitle" data-i18n="preTrusted">Trusted exchanges</button>
+      <button type="button" class="preset" id="pre-bc" data-preset="bc" data-i18n="preBc">Binance + Coinbase</button>
+      <button type="button" class="preset" id="pre-all" data-preset="all" data-i18n="preAll">All (incl. flagged)</button>
+      <button type="button" class="preset" id="pre-kr" data-preset="kr" data-i18n="preKr">Korea (Upbit + Bithumb)</button>
+      <button type="button" class="preset" id="pre-us" data-preset="us" data-i18n="preUs">US (Coinbase + Kraken + Bitstamp)</button>
+    </div>
+  </section>
+
+  <div class="chips" id="chips" aria-label="Exchange selection" data-i18n-aria="ariaChips"></div>
+
+  <div class="chartbox">
+    <div class="legend" id="legend" aria-live="polite"></div>
+    <div class="chartarea"><div id="chart"></div></div>
+  </div>
+
+  <section class="chartbox sharebox" aria-label="Share over time" data-i18n-aria="ariaShare">
+    <div class="legend">
+      <div class="head">
+        <span class="ttl" data-i18n="shareTitle">Share over time</span>
+        <div class="seg" id="shareSeg">
+          <button type="button" id="share-mix" data-share="mix" data-i18n="shareMix">Mix of selected exchanges</button>
+          <button type="button" id="share-cb" data-share="cb" data-i18n="shareCb">Coinbase ÷ Binance</button>
+        </div>
+        <span class="t" id="shareWin"></span>
+      </div>
+      <div class="rows num" id="shareLegend"></div>
+    </div>
+    <div class="chartarea"><div id="shareChart"></div><div class="empty" id="shareEmpty" hidden></div></div>
+  </section>
+
+  <div class="tablewrap">
+    <table>
+      <thead><tr>
+        <th data-i18n="thExchange">Exchange</th><th data-i18n="thMarkets">Markets</th>
+        <th class="r" id="thVol" data-i18n="thVol24">24h volume (BTC)</th>
+        <th class="r" data-i18n="thUsd">USD value</th><th data-i18n="thShare">Share of selection</th><th data-i18n="thStatus">Status</th>
+      </tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+
+  <div class="notes">
+    <p data-i18n="note1">All data comes straight from each exchange's public API in your browser and refreshes every 60 seconds. Volume is summed in the base asset (BTC), so USDT, USD, USDC, FDUSD, EUR and KRW markets add up directly.</p>
+    <p data-i18n="note2">USD value is each candle's BTC volume × the Binance BTC/USDT close. The rightmost candle is still in progress.</p>
+    <p data-i18n="note3">Gate and HTX have faced persistent allegations of inflating volume through wash trading, so they're marked Flagged and left out of the default Trusted exchanges preset. Share over time uses a rolling 24-hour sum (7 days on the daily chart) instead of single candles to cut noise.</p>
+    <p data-i18n="note4">HTX daily candles close on UTC+8 and Bithumb's on KST, so they're a few hours off from the other exchanges' UTC days. Some exchanges (such as Bybit) may be blocked depending on your region; failed exchanges drop out of the total and show in the Status column.</p>
+  </div>
+</div>
+
+<script>
+// i18n: runs before the chart library loads so the right language shows on first paint.
+(() => {
+'use strict';
+const qLang = new URLSearchParams(location.search).get('lang');
+const LANG = qLang === 'en' || qLang === 'ko' ? qLang
+  : /^\/ko(\/|$)/.test(location.pathname) ? 'ko' : 'en';
+document.documentElement.lang = LANG;
+
+const T = {
+  ko: {
+    title: 'BTC 현물 합산 거래량',
+    subtitle: '거래소별 현물 비트코인 거래량을 BTC 단위로 합산합니다',
+    loading: '불러오는 중…',
+    updated: '마지막 갱신 {time}',
+    copyLink: '링크 복사',
+    copied: '복사됨',
+    copyManual: '주소창의 링크를 복사하세요',
+    shareX: 'X에 공유',
+    langSwitch: 'English',
+    ariaSummary: '요약',
+    ariaControls: '설정',
+    ariaChips: '거래소 선택',
+    ariaShare: '점유율 추이',
+    sumInit: '최근 24시간 합산 (선택 거래소)',
+    sumLabel24: '최근 24시간 합산 · 선택 {n}개 거래소',
+    sumLabelDay: '전일(UTC) 합산 · 선택 {n}개 거래소',
+    tileBc: '바이낸스 + 코인베이스 (같은 기간)',
+    bcShare: '신뢰 거래소 합계의 {pct}%',
+    tilePx: '기준 가격 (바이낸스 BTC/USDT)',
+    tileShare: '거래소별 점유율 (선택 거래소)',
+    priceBinance: '바이낸스 BTC/USDT',
+    priceCoinbase: '코인베이스 BTC/USD',
+    glInterval: '주기',
+    glUnit: '단위',
+    glView: '표시',
+    glPresets: '프리셋',
+    tf15m: '15분',
+    tf1h: '1시간',
+    tf4h: '4시간',
+    tf1d: '1일',
+    modeStack: '거래소별 누적',
+    modeTotal: '합계만',
+    preTrusted: '신뢰 거래소',
+    preTrustedTitle: '거래량 부풀림 의혹이 있는 게이트·HTX를 뺀 9개 거래소',
+    preBc: '바이낸스 + 코인베이스',
+    preAll: '전체 (주의 포함)',
+    preKr: '국내 (업비트 + 빗썸)',
+    preUs: '미국 (코인베이스 + 크라켄 + 비트스탬프)',
+    plTrusted: '신뢰 거래소',
+    plBc: '바이낸스 + 코인베이스',
+    plAll: '전체 거래소',
+    plKr: '업비트 + 빗썸',
+    plUs: '미국 거래소',
+    tfl15m: '15분봉',
+    tfl1h: '1시간봉',
+    tfl4h: '4시간봉',
+    tfl1d: '일봉',
+    shareText: '비트코인 현물 거래량 합산 · {what} · {tf}',
+    caution: '주의',
+    cautionNote: '자전거래로 거래량이 부풀려졌다는 의혹을 받아 온 거래소',
+    failed: '실패',
+    inProgress: '(진행 중)',
+    ohlcO: '시',
+    ohlcH: '고',
+    ohlcL: '저',
+    ohlcC: '종',
+    totalVol: '합산 거래량 {v}',
+    shareTitle: '점유율 추이',
+    shareMix: '선택 거래소 구성비',
+    shareCb: '코인베이스 ÷ 바이낸스',
+    shareWin24: '24시간 이동 합계 기준',
+    shareWin7: '7일 이동 합계 기준',
+    through: '{time}까지',
+    cbRatio: '코인베이스 거래량 = 바이낸스의 <b>{pct}%</b>',
+    cbDetail: '코인베이스 {cb} BTC · 바이낸스 {b} BTC',
+    bcMix: '바이낸스 + 코인베이스 <b>{pct}%</b>',
+    otherBand: '기타 ({names})',
+    emptyLoading: '선택한 거래소의 데이터를 불러오는 중입니다',
+    emptyRatio: '바이낸스와 코인베이스 데이터가 모두 있어야 비율을 계산할 수 있습니다',
+    thExchange: '거래소',
+    thMarkets: '포함 마켓',
+    thVol24: '24시간 거래량 (BTC)',
+    thVolDay: '전일(UTC) 거래량 (BTC)',
+    thUsd: 'USD 환산',
+    thShare: '선택 내 점유율',
+    thStatus: '상태',
+    stLoading: '불러오는 중',
+    stError: '✕ 불러오기 실패',
+    stPartial: '△ 일부 마켓 실패',
+    stOk: '● 정상',
+    notSelected: '미선택',
+    note1: '모든 데이터는 각 거래소의 공개 API에서 브라우저가 직접 가져오며 60초마다 갱신됩니다. 거래량은 기초자산(BTC) 수량을 합산하므로 USDT·USD·USDC·FDUSD·EUR·KRW 마켓을 그대로 더할 수 있습니다.',
+    note2: 'USD 환산은 각 봉의 BTC 거래량 × 바이낸스 BTC/USDT 종가입니다. 가장 오른쪽 봉은 진행 중인 봉입니다.',
+    note3: '게이트와 HTX는 자전거래로 거래량이 부풀려졌다는 의혹을 받아 온 곳이라 ‘주의’로 표시하고, 기본값인 ‘신뢰 거래소’ 프리셋에서는 뺍니다. 점유율 추이는 봉 하나가 아니라 24시간(일봉은 7일) 이동 합계로 계산해 노이즈를 줄였습니다.',
+    note4: 'HTX의 1일 봉은 UTC+8, 빗썸의 1일 봉은 KST 기준이라 다른 거래소의 UTC 일봉과 몇 시간 어긋납니다. 일부 거래소(바이비트 등)는 접속 지역에 따라 차단될 수 있으며, 실패한 거래소는 합산에서 빠지고 상태 열에 표시됩니다.',
+  },
+  en: {
+    title: 'Aggregated BTC Spot Volume',
+    subtitle: 'Spot bitcoin volume across exchanges, summed in BTC',
+    loading: 'Loading…',
+    updated: 'Updated {time}',
+    copyLink: 'Copy link',
+    copied: 'Copied',
+    copyManual: 'Copy the link from the address bar',
+    shareX: 'Share on X',
+    langSwitch: '\ud55c\uad6d\uc5b4', // the word for "Korean" in Korean, escaped
+    ariaSummary: 'Summary',
+    ariaControls: 'Settings',
+    ariaChips: 'Exchange selection',
+    ariaShare: 'Share over time',
+    sumInit: 'Last 24h total (selected exchanges)',
+    sumLabel24: 'Last 24h total · {n} exchanges selected',
+    sumLabelDay: 'Prior UTC day total · {n} exchanges selected',
+    tileBc: 'Binance + Coinbase (same window)',
+    bcShare: '{pct}% of trusted-exchange total',
+    tilePx: 'Reference price (Binance BTC/USDT)',
+    tileShare: 'Share by exchange (selected)',
+    priceBinance: 'Binance BTC/USDT',
+    priceCoinbase: 'Coinbase BTC/USD',
+    glInterval: 'Interval',
+    glUnit: 'Unit',
+    glView: 'View',
+    glPresets: 'Presets',
+    tf15m: '15m',
+    tf1h: '1h',
+    tf4h: '4h',
+    tf1d: '1D',
+    modeStack: 'Stacked by exchange',
+    modeTotal: 'Total only',
+    preTrusted: 'Trusted exchanges',
+    preTrustedTitle: 'The 9 exchanges left after excluding Gate and HTX, which face volume-inflation allegations',
+    preBc: 'Binance + Coinbase',
+    preAll: 'All (incl. flagged)',
+    preKr: 'Korea (Upbit + Bithumb)',
+    preUs: 'US (Coinbase + Kraken + Bitstamp)',
+    plTrusted: 'Trusted exchanges',
+    plBc: 'Binance + Coinbase',
+    plAll: 'All exchanges',
+    plKr: 'Upbit + Bithumb',
+    plUs: 'US exchanges',
+    tfl15m: '15m chart',
+    tfl1h: '1h chart',
+    tfl4h: '4h chart',
+    tfl1d: 'Daily chart',
+    shareText: 'Aggregated bitcoin spot volume · {what} · {tf}',
+    caution: 'Flagged',
+    cautionNote: 'Exchange accused of inflating volume through wash trading',
+    failed: 'Failed',
+    inProgress: '(in progress)',
+    ohlcO: 'O',
+    ohlcH: 'H',
+    ohlcL: 'L',
+    ohlcC: 'C',
+    totalVol: 'Total volume {v}',
+    shareTitle: 'Share over time',
+    shareMix: 'Mix of selected exchanges',
+    shareCb: 'Coinbase ÷ Binance',
+    shareWin24: 'Rolling 24h sum',
+    shareWin7: 'Rolling 7-day sum',
+    through: 'through {time}',
+    cbRatio: 'Coinbase volume = <b>{pct}%</b> of Binance',
+    cbDetail: 'Coinbase {cb} BTC · Binance {b} BTC',
+    bcMix: 'Binance + Coinbase <b>{pct}%</b>',
+    otherBand: 'Other ({names})',
+    emptyLoading: 'Loading data for the selected exchanges',
+    emptyRatio: 'Needs both Binance and Coinbase data to compute the ratio',
+    thExchange: 'Exchange',
+    thMarkets: 'Markets',
+    thVol24: '24h volume (BTC)',
+    thVolDay: 'Prior UTC day volume (BTC)',
+    thUsd: 'USD value',
+    thShare: 'Share of selection',
+    thStatus: 'Status',
+    stLoading: 'Loading',
+    stError: '✕ Failed to load',
+    stPartial: '△ Some markets failed',
+    stOk: '● OK',
+    notSelected: 'Not selected',
+    note1: "All data comes straight from each exchange's public API in your browser and refreshes every 60 seconds. Volume is summed in the base asset (BTC), so USDT, USD, USDC, FDUSD, EUR and KRW markets add up directly.",
+    note2: "USD value is each candle's BTC volume × the Binance BTC/USDT close. The rightmost candle is still in progress.",
+    note3: "Gate and HTX have faced persistent allegations of inflating volume through wash trading, so they're marked Flagged and left out of the default Trusted exchanges preset. Share over time uses a rolling 24-hour sum (7 days on the daily chart) instead of single candles to cut noise.",
+    note4: "HTX daily candles close on UTC+8 and Bithumb's on KST, so they're a few hours off from the other exchanges' UTC days. Some exchanges (such as Bybit) may be blocked depending on your region; failed exchanges drop out of the total and show in the Status column.",
+  },
+};
+
+function t(key, vars) {
+  const s = T[LANG][key] ?? T.ko[key] ?? key;
+  return vars ? s.replace(/\{(\w+)\}/g, (m, k) => (k in vars ? vars[k] : m)) : s;
+}
+window.I18N = { LANG, t };
+
+// Static markup keeps English as its default; swap in the active language before first paint.
+for (const el of document.querySelectorAll('[data-i18n]')) el.textContent = t(el.dataset.i18n);
+for (const el of document.querySelectorAll('[data-i18n-title]')) el.title = t(el.dataset.i18nTitle);
+for (const el of document.querySelectorAll('[data-i18n-aria]')) el.setAttribute('aria-label', t(el.dataset.i18nAria));
+})();
+</script>
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@5.0.9/dist/lightweight-charts.standalone.production.js"></script>
+<script>
+(() => {
+'use strict';
+
+const { LANG, t } = window.I18N;
+const LOCALE = LANG === 'ko' ? 'ko-KR' : 'en-US';
+
+const N = 300;              // candles shown
+const REFRESH_MS = 60_000;
+
+// Intervals per exchange. null = build from a smaller interval.
+const TF = {
+  '15m': { sec: 900,   binance: '15m', cb: 900,   okx: '15m',   bybit: '15',  upbit: 'minutes/15',  bitget: '15min', gate: '15m', htx: '15min', kraken: 15,   bitstamp: 900 },
+  '1h':  { sec: 3600,  binance: '1h',  cb: 3600,  okx: '1H',    bybit: '60',  upbit: 'minutes/60',  bitget: '1h',    gate: '1h',  htx: '60min', kraken: 60,   bitstamp: 3600 },
+  '4h':  { sec: 14400, binance: '4h',  cb: null,  okx: '4H',    bybit: '240', upbit: 'minutes/240', bitget: '4h',    gate: '4h',  htx: '4hour', kraken: 240,  bitstamp: 14400 },
+  '1d':  { sec: 86400, binance: '1d',  cb: 86400, okx: '1Dutc', bybit: 'D',   upbit: 'days',        bitget: '1Dutc', gate: '1d',  htx: '1day',  kraken: 1440, bitstamp: 86400 },
+};
+
+async function getJSON(url) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 12_000);
+  try {
+    const res = await fetch(url, { signal: ctrl.signal });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return await res.json();
+  } finally { clearTimeout(timer); }
+}
+
+// Each fetcher resolves to [[tSec, baseVolume], ...]
+const fetchers = {
+  async binance(sym, tf) {
+    const rows = await getJSON(`https://data-api.binance.vision/api/v3/klines?symbol=${sym}&interval=${tf.binance}&limit=${N}`);
+    return rows.map(r => [r[0] / 1000, +r[5], +r[1], +r[2], +r[3], +r[4]]);
+  },
+  async coinbase(product, tf) {
+    const gran = tf.cb || 3600;
+    const factor = tf.sec / gran;
+    const need = N * factor;
+    const out = [];
+    let end = Math.floor(Date.now() / 1000);
+    while (out.length < need) {
+      const start = end - 300 * gran;
+      const rows = await getJSON(`https://api.exchange.coinbase.com/products/${product}/candles?granularity=${gran}&start=${new Date(start * 1000).toISOString()}&end=${new Date(end * 1000).toISOString()}`);
+      if (!Array.isArray(rows) || !rows.length) break;
+      for (const r of rows) out.push([r[0], +r[5]]);
+      end = start;
+    }
+    return out;
+  },
+  async okx(inst, tf) {
+    const j = await getJSON(`https://www.okx.com/api/v5/market/candles?instId=${inst}&bar=${tf.okx}&limit=${N}`);
+    if (j.code !== '0') throw new Error(j.msg || 'OKX error');
+    return j.data.map(r => [r[0] / 1000, +r[5]]);
+  },
+  async bybit(sym, tf) {
+    const j = await proxied({ src: 'bybit', symbol: sym, interval: tf.bybit, limit: N },
+      `https://api.bybit.com/v5/market/kline?category=spot&symbol=${sym}&interval=${tf.bybit}&limit=${N}`);
+    if (j.retCode !== 0) throw new Error(j.retMsg || 'Bybit error');
+    return j.result.list.map(r => [r[0] / 1000, +r[5]]);
+  },
+  async upbit(market, tf) { return upbitLike('https://api.upbit.com', market, tf, true); },
+  async bithumb(market, tf) { return upbitLike('https://api.bithumb.com', market, tf, false); },
+  async bitget(sym, tf) {
+    const j = await getJSON(`https://api.bitget.com/api/v2/spot/market/candles?symbol=${sym}&granularity=${tf.bitget}&limit=${N}`);
+    if (j.code !== '00000') throw new Error(j.msg || 'Bitget error');
+    return j.data.map(r => [r[0] / 1000, +r[5]]);
+  },
+  async gate(pair, tf) {
+    const rows = await getJSON(`https://api.gateio.ws/api/v4/spot/candlesticks?currency_pair=${pair}&interval=${tf.gate}&limit=${N}`);
+    return rows.map(r => [+r[0], +r[6]]);
+  },
+  async htx(sym, tf) {
+    const j = await getJSON(`https://api.huobi.pro/market/history/kline?symbol=${sym}&period=${tf.htx}&size=${N}`);
+    if (j.status !== 'ok') throw new Error(j['err-msg'] || 'HTX error');
+    return j.data.map(r => [r.id, +r.amount]);
+  },
+  async kraken(pair, tf) {
+    const j = await getJSON(`https://api.kraken.com/0/public/OHLC?pair=${pair}&interval=${tf.kraken}`);
+    if (j.error && j.error.length) throw new Error(j.error.join(', '));
+    const key = Object.keys(j.result).find(k => k !== 'last');
+    return j.result[key].slice(-N).map(r => [r[0], +r[6]]);
+  },
+  async bitstamp(pair, tf) {
+    const j = await getJSON(`https://www.bitstamp.net/api/v2/ohlc/${pair}/?step=${tf.bitstamp}&limit=${N}`);
+    return j.data.ohlc.map(r => [+r.timestamp, +r.volume]);
+  },
+};
+
+// Upbit throttles browser requests per Origin and Bybit geo-blocks some regions, so those two
+// go through our Seoul-region proxy first (cached at the CDN) and fall back to a direct call.
+async function proxied(params, directUrl) {
+  try { return await getJSON('/api/proxy?' + new URLSearchParams(params)); }
+  catch { return getJSON(directUrl); }
+}
+
+async function upbitLike(base, market, tf, viaProxy) {
+  const out = [];
+  let to = '';
+  while (out.length < N) {
+    const direct = `${base}/v1/candles/${tf.upbit}?market=${market}&count=200${to ? '&to=' + to : ''}`;
+    const params = { src: 'upbit', unit: tf.upbit, market, count: 200, ...(to ? { to } : {}) };
+    const rows = await (viaProxy ? proxied(params, direct) : getJSON(direct));
+    if (!Array.isArray(rows) || !rows.length) break;
+    // Daily candles: key by the KST date so Bithumb's KST-midnight day lands on the UTC day it mostly overlaps.
+    for (const r of rows) {
+      const t = tf.upbit === 'days' ? r.candle_date_time_kst.slice(0, 10) + 'T00:00:00Z' : r.candle_date_time_utc + 'Z';
+      out.push([Date.parse(t) / 1000, +r.candle_acc_trade_volume]);
+    }
+    to = rows[rows.length - 1].candle_date_time_utc + 'Z';
+    if (rows.length < 200) break;
+  }
+  return out;
+}
+
+// Colors follow the exchange, never its rank. Slots 1–8 plus a neutral "other".
+const EXCHANGES = [
+  { id: 'binance',  name: '바이낸스', en: 'Binance',  color: '--s1', markets: ['BTCUSDT', 'BTCFDUSD', 'BTCUSDC'] },
+  { id: 'coinbase', name: '코인베이스', en: 'Coinbase', color: '--s2', markets: ['BTC-USD', 'BTC-USDT', 'BTC-EUR'] },
+  { id: 'okx',      name: 'OKX',     en: 'OKX',      color: '--s3', markets: ['BTC-USDT', 'BTC-USDC'] },
+  { id: 'bybit',    name: '바이비트', en: 'Bybit',    color: '--s4', markets: ['BTCUSDT', 'BTCUSDC'] },
+  { id: 'upbit',    name: '업비트',   en: 'Upbit',    color: '--s5', markets: ['KRW-BTC', 'USDT-BTC'] },
+  { id: 'bitget',   name: '비트겟',   en: 'Bitget',   color: '--s6', markets: ['BTCUSDT', 'BTCUSDC'] },
+  { id: 'gate',     name: '게이트',   en: 'Gate',     color: '--s7', markets: ['BTC_USDT'], caution: true },
+  { id: 'bithumb',  name: '빗썸',     en: 'Bithumb',  color: '--s8', markets: ['KRW-BTC'] },
+  { id: 'kraken',   name: '크라켄',   en: 'Kraken',   color: '--other', markets: ['XBTUSD', 'XBTEUR', 'XBTUSDT'] },
+  { id: 'bitstamp', name: '비트스탬프', en: 'Bitstamp', color: '--other', markets: ['btcusd', 'btceur'] },
+  { id: 'htx',      name: 'HTX',     en: 'HTX',      color: '--other', markets: ['btcusdt'], caution: true },
+];
+const BYID = Object.fromEntries(EXCHANGES.map(e => [e.id, e]));
+const CAUTION_NOTE = t('cautionNote');
+const exName = ex => LANG === 'ko' ? ex.name : ex.en;
+const PRESETS = {
+  trusted: EXCHANGES.filter(e => !e.caution).map(e => e.id),
+  bc:  ['binance', 'coinbase'],
+  all: EXCHANGES.map(e => e.id),
+  kr:  ['upbit', 'bithumb'],
+  us:  ['coinbase', 'kraken', 'bitstamp'],
+};
+const PRESET_LABEL = { trusted: t('plTrusted'), bc: t('plBc'), all: t('plAll'), kr: t('plKr'), us: t('plUs') };
+const TF_LABEL = { '15m': t('tfl15m'), '1h': t('tfl1h'), '4h': t('tfl4h'), '1d': t('tfl1d') };
+
+// ---------- state ----------
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('btcvol.' + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem('btcvol.' + k, JSON.stringify(v)); } catch {} },
+};
+// A shared link (?ex=bc&tf=4h) wins over what this browser remembered.
+const qs = new URLSearchParams(location.search);
+function parseEx(v) {
+  if (!v) return null;
+  if (PRESETS[v]) return PRESETS[v];
+  const ids = v.split(',').filter(id => BYID[id]);
+  return ids.length ? ids : null;
+}
+const pick = (v, allowed, d) => allowed.includes(v) ? v : d;
+const state = {
+  tf: pick(qs.get('tf') || store.get('tf', '1h'), Object.keys(TF), '1h'),
+  unit: pick(qs.get('unit') || store.get('unit', 'btc'), ['btc', 'usd'], 'btc'),
+  mode: pick(qs.get('mode') || store.get('mode', 'stack'), ['stack', 'total'], 'stack'),
+  share: pick(qs.get('share') || store.get('share', 'mix'), ['mix', 'cb'], 'mix'),
+  selected: new Set(parseEx(qs.get('ex')) || parseEx((store.get('selected', null) || []).join(',')) || PRESETS.trusted),
+  data: {},      // exId -> { vol: Map<t, btc>, status: 'ok'|'partial'|'error'|'loading', errors: [] }
+  price: [],     // [{time, open, high, low, close}]
+  priceSource: '',
+  loadSeq: 0,
+};
+
+// ---------- formatting ----------
+const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const nf0 = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
+const nf1 = new Intl.NumberFormat('en-US', { maximumFractionDigits: 1, minimumFractionDigits: 1 });
+function fmtBtc(v) { return v >= 1000 ? nf0.format(v) : nf1.format(v); }
+function fmtUsd(v) {
+  const a = Math.abs(v);
+  if (a >= 1e9) return '$' + (v / 1e9).toFixed(2) + 'B';
+  if (a >= 1e6) return '$' + (v / 1e6).toFixed(1) + 'M';
+  if (a >= 1e3) return '$' + (v / 1e3).toFixed(0) + 'K';
+  return '$' + v.toFixed(0);
+}
+const fmtVal = v => state.unit === 'usd' ? fmtUsd(v) : fmtBtc(v) + ' BTC';
+const fmtPx = v => nf0.format(v);
+const tzShift = -new Date().getTimezoneOffset() * 60;   // chart draws UTC; shift to local wall time
+function fmtTime(tSec) {
+  const d = new Date(tSec * 1000);
+  const p = n => String(n).padStart(2, '0');
+  const day = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+  return state.tf === '1d' ? day : `${day} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+// ---------- data loading ----------
+async function loadExchange(ex, tf, seq) {
+  const results = await Promise.allSettled(ex.markets.map(m => fetchers[ex.id](m, tf)));
+  if (seq !== state.loadSeq) return;
+  const vol = new Map();
+  const errors = [];
+  results.forEach((r, i) => {
+    if (r.status === 'rejected') { errors.push(`${ex.markets[i]}: ${r.reason && r.reason.message || r.reason}`); return; }
+    for (const row of r.value) {
+      const t = Math.floor(row[0] / tf.sec) * tf.sec;
+      vol.set(t, (vol.get(t) || 0) + row[1]);
+    }
+  });
+  const okCount = results.filter(r => r.status === 'fulfilled').length;
+  state.data[ex.id] = {
+    vol, errors,
+    okMarkets: ex.markets.filter((_, i) => results[i].status === 'fulfilled'),
+    status: okCount === 0 ? 'error' : errors.length ? 'partial' : 'ok',
+  };
+}
+
+async function loadPrice(tf, seq) {
+  try {
+    const rows = await fetchers.binance('BTCUSDT', tf);
+    if (seq !== state.loadSeq) return;
+    state.price = rows.map(r => ({ time: r[0], open: r[2], high: r[3], low: r[4], close: r[5] }));
+    state.priceSource = t('priceBinance');
+  } catch {
+    // Fall back to Coinbase BTC-USD when Binance is unreachable.
+    const gran = tf.cb || 3600;
+    const rows = await getJSON(`https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=${gran}`);
+    if (seq !== state.loadSeq) return;
+    const byT = new Map();
+    for (const r of rows.slice().reverse()) {
+      const t = Math.floor(r[0] / tf.sec) * tf.sec;
+      const c = byT.get(t);
+      if (!c) byT.set(t, { time: t, open: r[3], high: r[2], low: r[1], close: r[4] });
+      else { c.high = Math.max(c.high, r[2]); c.low = Math.min(c.low, r[1]); c.close = r[4]; }
+    }
+    state.price = [...byT.values()].sort((a, b) => a.time - b.time);
+    state.priceSource = t('priceCoinbase');
+  }
+}
+
+let refreshTimer = null;
+async function loadAll({ soft = false } = {}) {
+  const seq = ++state.loadSeq;
+  const tf = TF[state.tf];
+  setBusy(true);
+  if (!soft) {
+    state.data = {};
+    for (const ex of EXCHANGES) state.data[ex.id] = { vol: new Map(), status: 'loading', errors: [], okMarkets: [] };
+    renderChips(); renderTable();
+  }
+  const pricePromise = loadPrice(tf, seq).then(() => { if (seq === state.loadSeq) renderAll(); });
+  const jobs = EXCHANGES.map(ex => loadExchange(ex, tf, seq).then(() => {
+    if (seq === state.loadSeq && state.price.length) renderAll();
+  }));
+  await Promise.allSettled([pricePromise, ...jobs]);
+  if (seq !== state.loadSeq) return;
+  renderAll();
+  setBusy(false);
+  document.getElementById('updated').textContent = t('updated', { time: new Date().toLocaleTimeString(LOCALE, { hour12: false }) });
+  clearTimeout(refreshTimer);
+  refreshTimer = setTimeout(() => loadAll({ soft: true }), REFRESH_MS);
+}
+function setBusy(b) { document.getElementById('dot').classList.toggle('busy', b); }
+
+// ---------- derived series ----------
+function activeIds() {
+  return EXCHANGES.filter(e => state.selected.has(e.id) && state.data[e.id] && state.data[e.id].status !== 'error' && state.data[e.id].status !== 'loading').map(e => e.id);
+}
+function rows() {
+  const pxs = state.price.slice(-N);
+  const ids = activeIds();
+  return pxs.map(p => {
+    const per = {};
+    let total = 0;
+    for (const id of ids) {
+      let v = state.data[id].vol.get(p.time) || 0;
+      if (state.unit === 'usd') v *= p.close;
+      per[id] = v; total += v;
+    }
+    return { ...p, per, total };
+  });
+}
+
+// ---------- chart ----------
+const LC = window.LightweightCharts;
+const SCALE_W = 72;
+let chart, priceSeries, volSeries = [];
+let shareChart, shareSeries = [], shareKey = '';
+let syncingCross = false, syncingRange = false;
+function chartColors() {
+  return {
+    bg: css('--panel'), fg: css('--fg-3'), grid: css('--line'),
+    up: css('--up'), down: css('--down'),
+  };
+}
+function initChart() {
+  const c = chartColors();
+  chart = LC.createChart(document.getElementById('chart'), {
+    autoSize: true,
+    layout: {
+      background: { type: 'solid', color: c.bg }, textColor: c.fg,
+      fontFamily: getComputedStyle(document.body).getPropertyValue('--font-num') || 'monospace', fontSize: 11,
+      panes: { separatorColor: c.grid, separatorHoverColor: c.grid, enableResize: true },
+      attributionLogo: false,
+    },
+    grid: { vertLines: { color: c.grid }, horzLines: { color: c.grid } },
+    rightPriceScale: { borderColor: c.grid, minimumWidth: SCALE_W },
+    timeScale: { borderColor: c.grid, timeVisible: true, secondsVisible: false, rightOffset: 4 },
+    crosshair: { mode: LC.CrosshairMode.Normal },
+    localization: { locale: LOCALE },
+  });
+  priceSeries = chart.addSeries(LC.CandlestickSeries, {
+    upColor: c.up, downColor: c.down, wickUpColor: c.up, wickDownColor: c.down, borderVisible: false,
+    priceFormat: { type: 'price', precision: 0, minMove: 1 },
+  }, 0);
+  chart.subscribeCrosshairMove(param => {
+    const t = param && param.time != null ? param.time - tzShift : null;
+    renderLegend(t);
+    if (!syncingCross) mirrorCrosshair(shareChart, shareAnchor(), t);
+  });
+  initShareChart();
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyChartTheme);
+  new MutationObserver(applyChartTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+}
+function applyChartTheme() {
+  const c = chartColors();
+  chart.applyOptions({
+    layout: { background: { type: 'solid', color: c.bg }, textColor: c.fg, panes: { separatorColor: c.grid, separatorHoverColor: c.grid } },
+    grid: { vertLines: { color: c.grid }, horzLines: { color: c.grid } },
+    rightPriceScale: { borderColor: c.grid }, timeScale: { borderColor: c.grid },
+  });
+  priceSeries.applyOptions({ upColor: c.up, downColor: c.down, wickUpColor: c.up, wickDownColor: c.down });
+  shareChart.applyOptions({
+    layout: { background: { type: 'solid', color: c.bg }, textColor: c.fg },
+    grid: { vertLines: { color: c.grid }, horzLines: { color: c.grid } },
+    rightPriceScale: { borderColor: c.grid }, timeScale: { borderColor: c.grid },
+  });
+  shareKey = '';
+  renderChart(); renderShare();
+}
+
+// ---------- share trend chart ----------
+// Shares use a rolling window (24h, or 7 days on the daily chart) so one quiet candle doesn't swing the line.
+function shareWindow() {
+  return { '15m': 96, '1h': 24, '4h': 6, '1d': 7 }[state.tf];
+}
+const loaded = id => state.data[id] && (state.data[id].status === 'ok' || state.data[id].status === 'partial');
+
+function shareRows() {
+  const pxs = state.price.slice(-N);
+  const W = shareWindow();
+  const ids = EXCHANGES.map(e => e.id).filter(loaded);
+  const sums = Object.fromEntries(ids.map(id => [id, 0]));
+  return pxs.map((p, i) => {
+    for (const id of ids) {
+      const vol = state.data[id].vol;
+      sums[id] += vol.get(p.time) || 0;
+      if (i >= W) sums[id] -= vol.get(pxs[i - W].time) || 0;
+    }
+    return { time: p.time, ready: i >= W - 1, sums: { ...sums } };
+  });
+}
+
+function initShareChart() {
+  const c = chartColors();
+  shareChart = LC.createChart(document.getElementById('shareChart'), {
+    autoSize: true,
+    layout: { background: { type: 'solid', color: c.bg }, textColor: c.fg, fontFamily: css('--font-num') || 'monospace', fontSize: 11, attributionLogo: false },
+    grid: { vertLines: { color: c.grid }, horzLines: { color: c.grid } },
+    rightPriceScale: { borderColor: c.grid, minimumWidth: SCALE_W, scaleMargins: { top: 0.06, bottom: 0.02 } },
+    timeScale: { borderColor: c.grid, timeVisible: true, secondsVisible: false, rightOffset: 4 },
+    crosshair: { mode: LC.CrosshairMode.Normal },
+    localization: { locale: LOCALE, priceFormatter: v => v.toFixed(0) + '%' },
+  });
+  // Both charts hold one point per price candle, so logical ranges map one to one.
+  const link = (from, to) => from.timeScale().subscribeVisibleLogicalRangeChange(r => {
+    if (!r || syncingRange) return;
+    syncingRange = true;
+    to.timeScale().setVisibleLogicalRange(r);
+    syncingRange = false;
+  });
+  link(chart, shareChart);
+  link(shareChart, chart);
+  shareChart.subscribeCrosshairMove(param => {
+    const t = param && param.time != null ? param.time - tzShift : null;
+    renderShareLegend(t);
+    if (!syncingCross) mirrorCrosshair(chart, priceSeries, t);
+  });
+}
+
+// Exchanges without a palette slot share one gray "other" band, so two grays never sit side by side.
+function shareBands(ids) {
+  const bands = ids.filter(id => BYID[id].color !== '--other').map(id => ({ key: id, ids: [id], color: BYID[id].color, name: exName(BYID[id]) }));
+  const rest = ids.filter(id => BYID[id].color === '--other');
+  if (rest.length) bands.push({ key: '__other', ids: rest, color: '--other', name: rest.length > 1 ? t('otherBand', { names: rest.map(id => exName(BYID[id])).join('·') }) : exName(BYID[rest[0]]) });
+  return bands;
+}
+
+function shareAnchor() { return shareSeries.length ? shareSeries[0].series : null; }
+function mirrorCrosshair(target, series, t) {
+  if (!target || !series) return;
+  syncingCross = true;
+  try {
+    if (t == null) target.clearCrosshairPosition();
+    else {
+      const pt = series.data().find(d => d.time === t + tzShift);
+      if (pt && pt.value != null) target.setCrosshairPosition(pt.value, pt.time, series);
+      else if (pt && pt.close != null) target.setCrosshairPosition(pt.close, pt.time, series);
+    }
+  } catch {}
+  syncingCross = false;
+}
+
+function renderShare() {
+  if (!shareChart) return;
+  const data = shareRows();
+  const empty = document.getElementById('shareEmpty');
+  document.getElementById('shareWin').textContent = t(state.tf === '1d' ? 'shareWin7' : 'shareWin24');
+  let ids, bands = [], msg = '';
+  if (state.share === 'mix') {
+    ids = activeIds();
+    bands = shareBands(ids);
+    if (!ids.length) msg = t('emptyLoading');
+  } else {
+    ids = ['__ratio'];
+    if (!loaded('binance') || !loaded('coinbase')) msg = t('emptyRatio');
+  }
+  empty.hidden = !msg;
+  empty.textContent = msg;
+
+  const key = state.share + '|' + bands.map(b => b.key).join(',');
+  if (key !== shareKey) {
+    for (const s of shareSeries) shareChart.removeSeries(s.series);
+    shareSeries = [];
+    if (state.share === 'mix') {
+      // 100% stacked areas: series k is the cumulative share of exchanges 0..k, tallest added first.
+      // The panel-colored line leaves a thin gap between bands.
+      for (let k = bands.length - 1; k >= 0; k--) {
+        const color = css(bands[k].color);
+        const series = shareChart.addSeries(LC.AreaSeries, {
+          lineColor: css('--panel'), lineWidth: 2, topColor: color, bottomColor: color,
+          priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false,
+          autoscaleInfoProvider: () => ({ priceRange: { minValue: 0, maxValue: 100 } }),
+        });
+        shareSeries.unshift({ id: bands[k].key, series, k });
+      }
+    } else {
+      const series = shareChart.addSeries(LC.LineSeries, {
+        color: css('--accent'), lineWidth: 2, priceLineVisible: false, lastValueVisible: true,
+      });
+      shareSeries = [{ id: '__ratio', series, k: 0 }];
+    }
+    shareKey = key;
+  }
+  for (const ss of shareSeries) {
+    ss.series.setData(data.map(d => {
+      const time = d.time + tzShift;
+      if (!d.ready || msg) return { time };
+      if (ss.id === '__ratio') {
+        const b = d.sums.binance, cb = d.sums.coinbase;
+        return b ? { time, value: cb / b * 100 } : { time };
+      }
+      const total = ids.reduce((a, id) => a + d.sums[id], 0);
+      if (!total) return { time };
+      const below = bands.slice(0, ss.k + 1).flatMap(b => b.ids);
+      return { time, value: below.reduce((a, id) => a + d.sums[id], 0) / total * 100 };
+    }));
+  }
+  renderShareLegend(null);
+}
+
+function renderShareLegend(at) {
+  const el = document.getElementById('shareLegend');
+  const data = shareRows().filter(d => d.ready);
+  if (!data.length) { el.innerHTML = ''; return; }
+  const d = (at != null && data.find(x => x.time === at)) || data[data.length - 1];
+  const when = `<span class="t">${t('through', { time: fmtTime(d.time) })}</span>`;
+  if (state.share === 'cb') {
+    if (!loaded('binance') || !loaded('coinbase') || !d.sums.binance) { el.innerHTML = ''; return; }
+    const r = d.sums.coinbase / d.sums.binance * 100;
+    el.innerHTML = `${when}<span class="it">${t('cbRatio', { pct: r.toFixed(1) })}</span>
+      <span class="it"><em>${t('cbDetail', { cb: fmtBtc(d.sums.coinbase), b: fmtBtc(d.sums.binance) })}</em></span>`;
+    return;
+  }
+  const ids = activeIds();
+  const total = ids.reduce((a, id) => a + d.sums[id], 0);
+  if (!total) { el.innerHTML = ''; return; }
+  const pct = id => d.sums[id] / total * 100;
+  const bands = shareBands(ids);
+  const bc = ids.includes('binance') && ids.includes('coinbase') && ids.length > 2
+    ? `<span class="it">${t('bcMix', { pct: (pct('binance') + pct('coinbase')).toFixed(1) })}</span>` : '';
+  // Listed top to bottom, matching the stacked bands.
+  el.innerHTML = when + bc + bands.slice().reverse().map(b =>
+    `<span class="it" style="--c:var(${b.color})"><i></i>${b.name} <b>${b.ids.reduce((a, id) => a + pct(id), 0).toFixed(1)}%</b></span>`).join('');
+}
+
+let lastSeriesKey = '';
+function renderChart(fit) {
+  if (!chart) return;
+  const data = rows();
+  priceSeries.setData(data.map(d => ({ time: d.time + tzShift, open: d.open, high: d.high, low: d.low, close: d.close })));
+
+  // Stacked bars: series k carries the cumulative sum of exchanges 0..k.
+  // Add the tallest first so each shorter one draws on top of it.
+  const ids = state.mode === 'stack' ? activeIds() : ['__total'];
+  const key = state.mode + '|' + ids.join(',');
+  if (key !== lastSeriesKey) {
+    for (const s of volSeries) chart.removeSeries(s.series);
+    volSeries = [];
+    for (let k = ids.length - 1; k >= 0; k--) {
+      const series = chart.addSeries(LC.HistogramSeries, {
+        priceFormat: { type: 'custom', formatter: v => state.unit === 'usd' ? fmtUsd(v) : fmtBtc(v) },
+        priceLineVisible: false, lastValueVisible: k === ids.length - 1,
+      }, 1);
+      volSeries.unshift({ id: ids[k], series, k });
+    }
+    lastSeriesKey = key;
+    try {
+      const panes = chart.panes();
+      if (panes[1]) {
+        const h = document.getElementById('chart').clientHeight;
+        panes[1].setHeight(Math.round(h * 0.38));
+      }
+    } catch {}
+  }
+  for (const vs of volSeries) {
+    const color = vs.id === '__total' ? css('--accent') : css(BYID[vs.id].color);
+    const upto = state.mode === 'stack' ? ids.slice(0, vs.k + 1) : null;
+    vs.series.applyOptions({ color });
+    vs.series.setData(data.map(d => ({
+      time: d.time + tzShift,
+      value: upto ? upto.reduce((s, id) => s + (d.per[id] || 0), 0) : d.total,
+    })));
+  }
+  if (fit) chart.timeScale().fitContent();
+}
+
+function renderLegend(at) {
+  const el = document.getElementById('legend');
+  const data = rows();
+  if (!data.length) { el.innerHTML = ''; return; }
+  const d = (at != null && data.find(x => x.time === at)) || data[data.length - 1];
+  const ids = activeIds();
+  const chg = (d.close - d.open) / d.open * 100;
+  const sorted = ids.map(id => [id, d.per[id] || 0]).sort((a, b) => b[1] - a[1]);
+  el.innerHTML = `
+    <div class="head num">
+      <span class="t">${fmtTime(d.time)}${d === data[data.length - 1] ? ' ' + t('inProgress') : ''}</span>
+      <span class="ohlc">${t('ohlcO')} <b>${fmtPx(d.open)}</b> ${t('ohlcH')} <b>${fmtPx(d.high)}</b> ${t('ohlcL')} <b>${fmtPx(d.low)}</b> ${t('ohlcC')} <b>${fmtPx(d.close)}</b> <span style="color:var(${chg >= 0 ? '--up' : '--down'})">${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%</span></span>
+      <span class="tot">${t('totalVol', { v: fmtVal(d.total) })}</span>
+    </div>
+    <div class="rows num">${sorted.map(([id, v]) => `<span class="it" style="--c:var(${BYID[id].color})"><i></i>${exName(BYID[id])} <b>${fmtVal(v)}</b> <em>${d.total ? (v / d.total * 100).toFixed(1) : '0.0'}%</em></span>`).join('')}</div>`;
+}
+
+// ---------- summary + table ----------
+function windowSums() {
+  // Rolling 24h for intraday; last completed UTC day on the daily chart.
+  const tf = TF[state.tf];
+  const pxs = state.price;
+  if (!pxs.length) return null;
+  let times;
+  if (state.tf === '1d') times = pxs.length > 1 ? [pxs[pxs.length - 2].time] : [pxs[0].time];
+  else {
+    const last = pxs[pxs.length - 1].time;
+    const from = last + tf.sec - 86400;
+    times = pxs.filter(p => p.time >= from).map(p => p.time);
+  }
+  const pxAt = new Map(pxs.map(p => [p.time, p.close]));
+  const per = {};
+  for (const ex of EXCHANGES) {
+    const d = state.data[ex.id];
+    let btc = 0, usd = 0;
+    if (d && d.status !== 'error' && d.status !== 'loading') for (const t of times) {
+      const v = d.vol.get(t) || 0; btc += v; usd += v * pxAt.get(t);
+    }
+    per[ex.id] = { btc, usd };
+  }
+  return { per };
+}
+
+function renderSummary() {
+  const w = windowSums();
+  if (!w) return;
+  const ids = activeIds();
+  const tot = ids.reduce((a, id) => ({ btc: a.btc + w.per[id].btc, usd: a.usd + w.per[id].usd }), { btc: 0, usd: 0 });
+  document.getElementById('sumLabel').textContent = t(state.tf === '1d' ? 'sumLabelDay' : 'sumLabel24', { n: ids.length });
+  document.getElementById('sumBtc').textContent = fmtBtc(tot.btc) + ' BTC';
+  document.getElementById('sumUsd').textContent = fmtUsd(tot.usd);
+
+  const bcOk = ['binance', 'coinbase'].filter(id => state.data[id] && state.data[id].status !== 'error' && state.data[id].status !== 'loading');
+  const bc = bcOk.reduce((s, id) => s + w.per[id].btc, 0);
+  const trusted = PRESETS.trusted.filter(loaded).reduce((s, id) => s + w.per[id].btc, 0);
+  document.getElementById('bcBtc').textContent = fmtBtc(bc) + ' BTC';
+  document.getElementById('bcShare').textContent = trusted ? t('bcShare', { pct: (bc / trusted * 100).toFixed(1) }) : '–';
+
+  const p = state.price;
+  if (p.length) {
+    const last = p[p.length - 1].close;
+    const from = state.tf === '1d' ? p[p.length - 2]?.close : (p.find(x => x.time >= p[p.length - 1].time + TF[state.tf].sec - 86400) || p[0]).open;
+    const chg = from ? (last - from) / from * 100 : 0;
+    document.getElementById('px').textContent = '$' + fmtPx(last);
+    const el = document.getElementById('pxChg');
+    el.textContent = `${chg >= 0 ? '+' : ''}${chg.toFixed(2)}% · ${state.priceSource}`;
+    el.style.color = `var(${chg >= 0 ? '--up' : '--down'})`;
+  }
+
+  const shares = ids.map(id => [id, w.per[id].btc]).filter(x => x[1] > 0).sort((a, b) => b[1] - a[1]);
+  document.getElementById('sharebar').innerHTML = shares.map(([id, v]) =>
+    `<span title="${exName(BYID[id])} ${(v / tot.btc * 100).toFixed(1)}%" style="width:${v / tot.btc * 100}%;background:var(${BYID[id].color})"></span>`).join('');
+  document.getElementById('shareTop').textContent = shares.slice(0, 3).map(([id, v]) => `${exName(BYID[id])} ${(v / tot.btc * 100).toFixed(0)}%`).join(' · ') || '–';
+}
+
+function renderTable() {
+  const w = windowSums();
+  const ids = activeIds();
+  const selTotal = w ? ids.reduce((s, id) => s + w.per[id].btc, 0) : 0;
+  document.getElementById('thVol').textContent = t(state.tf === '1d' ? 'thVolDay' : 'thVol24');
+  const order = EXCHANGES.slice().sort((a, b) => ((w && w.per[b.id].btc) || 0) - ((w && w.per[a.id].btc) || 0));
+  document.getElementById('tbody').innerHTML = order.map(ex => {
+    const d = state.data[ex.id] || { status: 'loading', errors: [] };
+    const on = state.selected.has(ex.id);
+    const v = w ? w.per[ex.id] : { btc: 0, usd: 0 };
+    const share = on && selTotal && d.status !== 'error' ? v.btc / selTotal * 100 : 0;
+    const st = d.status === 'loading' ? `<span class="mk">${t('stLoading')}</span>`
+      : d.status === 'error' ? `<span class="err" title="${escapeHtml(d.errors.join('\n'))}">${t('stError')}</span>`
+      : d.status === 'partial' ? `<span class="err" title="${escapeHtml(d.errors.join('\n'))}">${t('stPartial')}</span>`
+      : `<span class="ok">${t('stOk')}</span>`;
+    const ok = d.status === 'ok' || d.status === 'partial';
+    return `<tr class="${on ? '' : 'off'}" style="--c:var(${ex.color})">
+      <td><span class="exname"><i></i>${exName(ex)}${LANG === 'ko' ? ` <span class="mk">${ex.en}</span>` : ''}${ex.caution ? `<span class="caution" title="${CAUTION_NOTE}">${t('caution')}</span>` : ''}</span></td>
+      <td class="mk">${ex.markets.join(', ')}</td>
+      <td class="r num">${ok ? fmtBtc(v.btc) : '–'}</td>
+      <td class="r num">${ok ? fmtUsd(v.usd) : '–'}</td>
+      <td class="num">${on && ok ? `<span class="bar"><span style="width:${share}%"></span></span>${share.toFixed(1)}%` : `<span class="mk">${t('notSelected')}</span>`}</td>
+      <td>${st}</td></tr>`;
+  }).join('');
+}
+function escapeHtml(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+
+// ---------- controls ----------
+function renderChips() {
+  document.getElementById('chips').innerHTML = EXCHANGES.map(ex => {
+    const d = state.data[ex.id];
+    const bad = d && d.status === 'error';
+    return `<button type="button" class="chip" id="chip-${ex.id}" data-ex="${ex.id}" aria-pressed="${state.selected.has(ex.id)}" style="--c:var(${ex.color})">
+      <span class="sw"></span>${exName(ex)}${ex.caution ? `<span class="cau" title="${CAUTION_NOTE}">${t('caution')}</span>` : ''}${bad ? `<span class="st">${t('failed')}</span>` : ''}</button>`;
+  }).join('');
+}
+function renderControls() {
+  for (const b of document.querySelectorAll('#tfSeg button')) b.setAttribute('aria-pressed', b.dataset.tf === state.tf);
+  for (const b of document.querySelectorAll('#unitSeg button')) b.setAttribute('aria-pressed', b.dataset.unit === state.unit);
+  for (const b of document.querySelectorAll('#modeSeg button')) b.setAttribute('aria-pressed', b.dataset.mode === state.mode);
+  for (const b of document.querySelectorAll('#shareSeg button')) b.setAttribute('aria-pressed', b.dataset.share === state.share);
+  const key = presetKey();
+  for (const b of document.querySelectorAll('.preset')) b.setAttribute('aria-pressed', b.dataset.preset === key);
+  const what = key ? PRESET_LABEL[key] : [...state.selected].map(id => exName(BYID[id])).join(' + ');
+  const text = t('shareText', { what, tf: TF_LABEL[state.tf] });
+  document.getElementById('shareX').href = 'https://x.com/intent/post?' + new URLSearchParams({ text, url: shareUrl() });
+  // Link to the other language, keeping the current query (minus any ?lang= override).
+  const sw = document.getElementById('langSwitch');
+  const query = location.search.replace(/([?&])lang=[^&]*&?/, '$1').replace(/[?&]$/, '');
+  sw.href = (LANG === 'ko' ? '/' : '/ko/') + query;
+  sw.textContent = t('langSwitch');
+}
+function presetKey() {
+  const sel = [...state.selected].sort().join(',');
+  return Object.keys(PRESETS).find(k => PRESETS[k].slice().sort().join(',') === sel);
+}
+// Ids are plain ASCII, so the query stays readable: ?ex=bc&tf=4h
+function shareUrl() {
+  const q = [`ex=${presetKey() || EXCHANGES.filter(e => state.selected.has(e.id)).map(e => e.id).join(',')}`, `tf=${state.tf}`];
+  if (state.unit !== 'btc') q.push('unit=' + state.unit);
+  if (state.mode !== 'stack') q.push('mode=' + state.mode);
+  if (state.share !== 'mix') q.push('share=' + state.share);
+  return location.origin + location.pathname + '?' + q.join('&');
+}
+function renderAll(fit) {
+  renderControls(); renderChips(); renderChart(fit); renderLegend(null); renderShare(); renderSummary(); renderTable();
+}
+function persist() {
+  store.set('tf', state.tf); store.set('unit', state.unit); store.set('mode', state.mode); store.set('share', state.share);
+  store.set('selected', [...state.selected]);
+  try { history.replaceState(null, '', shareUrl()); } catch {}
+}
+
+document.getElementById('tfSeg').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b || b.dataset.tf === state.tf) return;
+  state.tf = b.dataset.tf; persist(); renderControls();
+  state.price = []; lastSeriesKey = '';
+  loadAll().then(() => chart.timeScale().fitContent());
+});
+document.getElementById('unitSeg').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  state.unit = b.dataset.unit; persist(); lastSeriesKey = ''; renderAll();
+});
+document.getElementById('modeSeg').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  state.mode = b.dataset.mode; persist(); renderAll();
+});
+document.querySelector('.controls').addEventListener('click', e => {
+  const b = e.target.closest('.preset'); if (!b) return;
+  state.selected = new Set(PRESETS[b.dataset.preset]); persist(); renderAll();
+});
+document.getElementById('shareSeg').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  state.share = b.dataset.share; persist(); renderControls(); renderShare();
+});
+document.getElementById('copyLink').addEventListener('click', async e => {
+  const btn = e.currentTarget;
+  const url = shareUrl();
+  try { await navigator.clipboard.writeText(url); btn.textContent = t('copied'); }
+  catch { btn.textContent = t('copyManual'); }
+  btn.classList.add('done');
+  setTimeout(() => { btn.textContent = t('copyLink'); btn.classList.remove('done'); }, 2000);
+});
+document.getElementById('chips').addEventListener('click', e => {
+  const b = e.target.closest('.chip'); if (!b) return;
+  const id = b.dataset.ex;
+  if (state.selected.has(id)) { if (state.selected.size > 1) state.selected.delete(id); }
+  else state.selected.add(id);
+  persist(); renderAll();
+});
+
+initChart();
+persist();
+renderControls();
+loadAll().then(() => chart.timeScale().fitContent());
+})();
+</script>
+</body>
+</html>
