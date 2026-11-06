@@ -17,6 +17,4 @@ node scripts/build.mjs && python3 -m http.server 5178 --directory dist
 
 Locally the proxy doesn't exist, so Bybit shows as failed; Upbit may be throttled.
 
-```bash
-vercel deploy --prod
-```
+Pushing to `main` deploys to production automatically (Vercel is connected to this repo). Other branches get preview deploys. `vercel deploy --prod` still works for a manual deploy.
