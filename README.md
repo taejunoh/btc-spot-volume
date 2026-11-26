@@ -7,6 +7,7 @@ Spot bitcoin volume from 11 exchanges, summed in BTC. Live at https://btc-spot-v
 - `index.html` — the whole page (English markup, Korean via the built-in dictionary). The only file to edit for UI changes.
 - `api/proxy.js` — Vercel function in Seoul (`icn1`) that relays Upbit and Bybit candles, which browsers can't call reliably. Allowlisted markets only, cached 30s.
 - `scripts/build.mjs` — writes `dist/` (`index.html`, `ko/index.html` with a Korean `<head>` for link previews, og images). Vercel runs it on every deploy.
+- `scripts/healthcheck.mjs` — checks all 11 exchanges still return candles. GitHub Actions runs it daily (`.github/workflows/healthcheck.yml`); a failed run emails the repo owner.
 - `scripts/make_og.py` — regenerates the preview images: `python3 scripts/make_og.py og.png en` and `python3 scripts/make_og.py og-ko.png ko` (needs Pillow, macOS fonts).
 
 ## Run and deploy
