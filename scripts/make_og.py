@@ -47,7 +47,6 @@ for yy in range(H):
 img.paste(Image.new('RGB', (W, H), BG), (0, 0), fade)
 d = ImageDraw.Draw(img)
 
-d.text((64, 58), 'BTC SPOT VOLUME · 11 EXCHANGES', font=ImageFont.truetype(MONO, 22), fill=FG3)
 d.text((64, 100 + (76 - COPY['title_size']) // 2), COPY['title'], font=f(COPY['title_size'], 6), fill=FG)
 d.text((64, 200), COPY['sub'], font=f(32, 2), fill=FG2)
 
